@@ -61,6 +61,11 @@ class NoOffsetPagination {
 		$pagenum_link = html_entity_decode( get_pagenum_link() );
 		$query_args   = array();
 		$url_parts    = explode( '?', $pagenum_link );
+		$posts = $wp_query->posts;
+		$last_post = array_pop( $posts );
+		$last_post_id = ( null !== $last_post ) ? $last_post->ID : false;
+		unset( $last_post );
+		unset( $posts );
 
 		if ( isset( $url_parts[1] ) ) {
 			wp_parse_str( $url_parts[1], $query_args );
@@ -124,6 +129,7 @@ class NoOffsetPagination {
 		if ( $current && ( $current < $total || - 1 == $total ) ) :
 			$link = str_replace( '%_%', $args['format'], $args['base'] );
 			$link = str_replace( '%#%', $current + 1, $link );
+			$link = add_query_arg( array( 'last_seen' => $last_post_id ), $link );
 			if ( $add_args ) {
 				$link = add_query_arg( $add_args, $link );
 			}
@@ -178,9 +184,7 @@ class NoOffsetPagination {
 			'base'     => $pagenum_link,
 			'format'   => $format,
 			'total'    => $wp_query->max_num_pages,
-			'current'  => $paged,
-			'mid_size' => 1,
-			'add_args' => array_map( 'urlencode', $query_args )
+			'current'  => $paged
 		) );
 
 		if ( $links ) :
