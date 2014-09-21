@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: No Offset Pagination for WordPress
- * Plugin URI: http://david.binda.cz
- * Description: Introduces No Offset pagination approach to WordPress world
+ * Plugin URI: https://github.com/david-binda/no-offset-pagination-for-wordpress
+ * Description: Introduces No Offset (keyset) pagination approach to WordPress
  * Version: 0.1
  * Author: David Biňovec
  * Author URI: http://david.binda.cz
