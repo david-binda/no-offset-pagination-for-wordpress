@@ -100,18 +100,9 @@ class NoOffsetPagination {
 			return;
 		}
 		$current  = (int) $args['current'];
-		$end_size = (int) $args['end_size']; // Out of bounds?  Make it the default.
-		if ( $end_size < 1 ) {
-			$end_size = 1;
-		}
-		$mid_size = (int) $args['mid_size'];
-		if ( $mid_size < 0 ) {
-			$mid_size = 2;
-		}
 		$add_args   = is_array( $args['add_args'] ) ? $args['add_args'] : false;
 		$r          = '';
 		$page_links = array();
-		$dots       = false;
 
 		if ( $current && 1 < $current ) :
 			$link = str_replace( '%_%', 2 == $current ? '' : $args['format'], $args['base'] );
