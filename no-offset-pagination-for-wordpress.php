@@ -37,7 +37,7 @@ class NoOffsetPagination {
 	public function where( $where, $query ) {
 		if ( true === $this->applies( $query ) ) {
 			global $wpdb;
-			$post = get_post( intval( $_GET['last_seen'] ) );
+			$post = get_post( intval( $_GET['next'] ) );
 			$where .= $wpdb->prepare( " AND {$wpdb->posts}.post_date < %s", $post->post_date );
 		}
 
@@ -129,7 +129,7 @@ class NoOffsetPagination {
 		if ( $current && ( $current < $total || - 1 == $total ) ) :
 			$link = str_replace( '%_%', $args['format'], $args['base'] );
 			$link = str_replace( '%#%', $current + 1, $link );
-			$link = add_query_arg( array( 'last_seen' => $last_post_id ), $link );
+			$link = add_query_arg( array( 'next' => $last_post_id ), $link );
 			if ( $add_args ) {
 				$link = add_query_arg( $add_args, $link );
 			}
