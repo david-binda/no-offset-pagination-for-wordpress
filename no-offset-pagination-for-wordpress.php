@@ -34,14 +34,37 @@ class NoOffsetPagination {
 	}
 
 	private function applies( $query, $direction = 'next' ) {
-		return ( false === is_admin() && true === $query->is_main_query() && true === isset( $_GET[ $direction ] ) ) ? true : false;
+		$applies = false;
+		if ( false === is_admin() ) {
+			if ( true === $query->is_main_query() && true === isset( $_GET[ $direction ] ) ) {
+				$applies = true;
+			} else {
+				if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
+					if ( true === isset( $query->query_vars['nooffset'][$direction] ) ) {
+						$applies = true;
+					}
+				}
+			}
+		}
+		return $applies;
+	}
+
+	private function get_post_id( $query = null ) {
+		if( true === isset( $_GET['next'] ) ) {
+			return intval( $_GET['next'] );
+		} else if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
+			return $query->query_vars['nooffset']['next'];
+		}
+		return null;
 	}
 
 	public function where( $where, $query ) {
 		if ( true === $this->applies( $query ) ) {
 			global $wpdb;
-			$post = get_post( intval( $_GET['next'] ) );
-			$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) < ( %s, %d )", $post->post_date, $post->ID );
+			$post = get_post( $this->get_post_id( $query ) );
+			if ( false === empty( $post ) ) {
+				$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) < ( %s, %d )", $post->post_date, $post->ID );
+			}
 		}
 
 		return $where;
