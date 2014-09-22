@@ -31,6 +31,7 @@ class NoOffsetPagination {
 		add_filter( 'post_limits', array( $this, 'limit' ), 10, 2 );
 		add_filter( 'posts_orderby', array(  $this, 'orderby'), 10, 2 );
 		add_filter( 'posts_request', array( $this, 'posts_request' ), 10, 2 );
+		add_action( 'pre_get_posts', array( $this, 'pre_get_posts' ), 10, 2 );
 	}
 
 	private function applies( $query, $direction = 'next' ) {
@@ -93,6 +94,12 @@ class NoOffsetPagination {
 			$request = "SELECT * FROM (".$request.") ORDER BY {$wpdb->posts}.post_date DESC";
 		}
 		return $request;
+	}
+
+	public function pre_get_posts( $query ) {
+		if ( true === $this->applies( $query ) ) {
+			$query->set( 'no_found_rows', true );
+		}
 	}
 
 	private static function paginate_links( $args = '' ) {
