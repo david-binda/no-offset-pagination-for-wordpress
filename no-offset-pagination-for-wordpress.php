@@ -26,12 +26,14 @@ function no_offset_pagination() {
 class NoOffsetPagination {
 
 	public function __construct() {
+		//todo: can't we use "posts_where_paged" filter?
 		add_filter( 'posts_where', array( $this, 'where' ), 10, 2 );
 		add_filter( 'post_limits', array( $this, 'limit' ), 10, 2 );
+		add_filter( 'posts_request', array( $this, 'posts_request' ), 10, 2 );
 	}
 
-	private function applies( $query ) {
-		return ( false === is_admin() && true === $query->is_main_query() && true === isset( $_GET['last_seen'] ) ) ? true : false;
+	private function applies( $query, $direction = 'next' ) {
+		return ( false === is_admin() && true === $query->is_main_query() && true === isset( $_GET[ $direction ] ) ) ? true : false;
 	}
 
 	public function where( $where, $query ) {
@@ -51,6 +53,14 @@ class NoOffsetPagination {
 		}
 
 		return $limit;
+	}
+
+	public function posts_request( $request, $query ) {
+		if ( true === $this->applies( $query, 'prev' ) ) {
+			global $wpdb;
+			$request = "SELECT * FROM (".$request.") ORDER BY {$wpdb->posts}.post_date DESC";
+		}
+		return $request;
 	}
 
 	private static function paginate_links( $args = '' ) {
