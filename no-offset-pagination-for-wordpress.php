@@ -29,6 +29,7 @@ class NoOffsetPagination {
 		//todo: can't we use "posts_where_paged" filter?
 		add_filter( 'posts_where', array( $this, 'where' ), 10, 2 );
 		add_filter( 'post_limits', array( $this, 'limit' ), 10, 2 );
+		add_filter( 'posts_orderby', array(  $this, 'orderby'), 10, 2 );
 		add_filter( 'posts_request', array( $this, 'posts_request' ), 10, 2 );
 	}
 
@@ -40,7 +41,7 @@ class NoOffsetPagination {
 		if ( true === $this->applies( $query ) ) {
 			global $wpdb;
 			$post = get_post( intval( $_GET['next'] ) );
-			$where .= $wpdb->prepare( " AND {$wpdb->posts}.post_date < %s", $post->post_date );
+			$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) < ( %s, %d )", $post->post_date, $post->ID );
 		}
 
 		return $where;
@@ -53,6 +54,14 @@ class NoOffsetPagination {
 		}
 
 		return $limit;
+	}
+
+	public function orderby( $orderby, $query ) {
+		if ( true === $this->applies( $query ) ) {
+			global $wpdb;
+			$orderby .= " , {$wpdb->posts}.ID DESC";
+		}
+		return $orderby;
 	}
 
 	public function posts_request( $request, $query ) {
