@@ -29,7 +29,7 @@ class NoOffsetPagination {
 		//todo: can't we use "posts_where_paged" filter?
 		add_filter( 'posts_where', array( $this, 'where' ), 10, 2 );
 		add_filter( 'post_limits', array( $this, 'limit' ), 10, 2 );
-		add_filter( 'posts_orderby', array(  $this, 'orderby'), 10, 2 );
+		add_filter( 'posts_orderby', array( $this, 'orderby' ), 10, 2 );
 		add_filter( 'posts_request', array( $this, 'posts_request' ), 10, 2 );
 		add_action( 'pre_get_posts', array( $this, 'pre_get_posts' ), 10, 2 );
 	}
@@ -41,21 +41,23 @@ class NoOffsetPagination {
 				$applies = true;
 			} else {
 				if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
-					if ( true === isset( $query->query_vars['nooffset'][$direction] ) ) {
+					if ( true === isset( $query->query_vars['nooffset'][ $direction ] ) ) {
 						$applies = true;
 					}
 				}
 			}
 		}
+
 		return $applies;
 	}
 
 	private function get_post_id( $query = null ) {
-		if( true === isset( $_GET['next'] ) ) {
+		if ( true === isset( $_GET['next'] ) ) {
 			return intval( $_GET['next'] );
 		} else if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
 			return $query->query_vars['nooffset']['next'];
 		}
+
 		return null;
 	}
 
@@ -85,14 +87,16 @@ class NoOffsetPagination {
 			global $wpdb;
 			$orderby .= " , {$wpdb->posts}.ID DESC";
 		}
+
 		return $orderby;
 	}
 
 	public function posts_request( $request, $query ) {
 		if ( true === $this->applies( $query, 'prev' ) ) {
 			global $wpdb;
-			$request = "SELECT * FROM (".$request.") ORDER BY {$wpdb->posts}.post_date DESC";
+			$request = "SELECT * FROM (" . $request . ") ORDER BY {$wpdb->posts}.post_date DESC";
 		}
+
 		return $request;
 	}
 
@@ -105,13 +109,11 @@ class NoOffsetPagination {
 	private static function paginate_links( $args = '' ) {
 		global $wp_query, $wp_rewrite;
 
-		$total        = ( isset( $wp_query->max_num_pages ) ) ? $wp_query->max_num_pages : 1;
-		$current      = ( get_query_var( 'paged' ) ) ? intval( get_query_var( 'paged' ) ) : 1;
 		$pagenum_link = html_entity_decode( get_pagenum_link() );
 		$query_args   = array();
 		$url_parts    = explode( '?', $pagenum_link );
-		$posts = $wp_query->posts;
-		$last_post = array_pop( $posts );
+		$posts        = $wp_query->posts;
+		$last_post    = array_pop( $posts );
 		$last_post_id = ( null !== $last_post ) ? $last_post->ID : false;
 		unset( $last_post );
 		unset( $posts );
@@ -121,23 +123,17 @@ class NoOffsetPagination {
 		}
 
 		$pagenum_link = remove_query_arg( array_keys( $query_args ), $pagenum_link );
-		$pagenum_link = trailingslashit( $pagenum_link ) . '%_%';
+		$pagenum_link = trailingslashit( $pagenum_link );
 
 		$format = $wp_rewrite->using_index_permalinks() && ! strpos( $pagenum_link, 'index.php' ) ? 'index.php/' : '';
-		$format .= $wp_rewrite->using_permalinks() ? user_trailingslashit( $wp_rewrite->pagination_base . '/%#%', 'paged' ) : '?paged=%#%';
+		$format .= $wp_rewrite->using_permalinks() ? user_trailingslashit( $wp_rewrite->pagination_base, 'paged' ) : '?paged=%#%';
 
 		$defaults = array(
 			'base'               => $pagenum_link,
-			// http://example.com/all_posts.php%_% : %_% is replaced by format (below)
 			'format'             => $format,
-			// ?page=%#% : %#% is replaced by the page number
-			'total'              => $total,
-			'current'            => $current,
 			'show_all'           => false,
 			'prev_text'          => __( '&larr; Previous', 'nooffsetpagination' ),
 			'next_text'          => __( 'Next &rarr;', 'nooffsetpagination' ),
-			'end_size'           => 1,
-			'mid_size'           => 2,
 			'type'               => 'plain',
 			'add_args'           => false,
 			// array of query args to add
@@ -148,19 +144,12 @@ class NoOffsetPagination {
 
 		$args = wp_parse_args( $args, $defaults );
 
-		// Who knows what else people pass in $args
-		$total = (int) $args['total'];
-		if ( $total < 2 ) {
-			return;
-		}
-		$current  = (int) $args['current'];
 		$add_args   = is_array( $args['add_args'] ) ? $args['add_args'] : false;
 		$r          = '';
 		$page_links = array();
 
-		if ( $current && 1 < $current ) :
-			$link = str_replace( '%_%', 2 == $current ? '' : $args['format'], $args['base'] );
-			$link = str_replace( '%#%', $current - 1, $link );
+		if ( true === isset( $_GET['next'] ) && false === empty( $_GET['next'] ) ) {
+			$link = $args['base'];
 			if ( $add_args ) {
 				$link = add_query_arg( $add_args, $link );
 			}
@@ -174,19 +163,19 @@ class NoOffsetPagination {
 			 * @param string $link The paginated link URL.
 			 */
 			$page_links[] = '<a class="prev page-numbers" href="' . esc_url( apply_filters( 'paginate_links', $link ) ) . '">' . $args['prev_text'] . '</a>';
-		endif;
-		if ( $current && ( $current < $total || - 1 == $total ) ) :
-			$link = str_replace( '%_%', $args['format'], $args['base'] );
-			$link = str_replace( '%#%', $current + 1, $link );
-			$link = add_query_arg( array( 'next' => $last_post_id ), $link );
-			if ( $add_args ) {
-				$link = add_query_arg( $add_args, $link );
-			}
-			$link .= $args['add_fragment'];
+		}
 
-			/** This filter is documented in wp-includes/general-template.php */
-			$page_links[] = '<a class="next page-numbers" href="' . esc_url( apply_filters( 'paginate_links', $link ) ) . '">' . $args['next_text'] . '</a>';
-		endif;
+		$link = $args['base'];
+		$link = add_query_arg( array( 'next' => $last_post_id ), $link );
+		if ( $add_args ) {
+			$link = add_query_arg( $add_args, $link );
+		}
+		$link .= $args['add_fragment'];
+
+		/** This filter is documented in wp-includes/general-template.php */
+		$page_links[] = '<a class="next page-numbers" href="' . esc_url( apply_filters( 'paginate_links', $link ) ) . '">' . $args['next_text'] . '</a>';
+
+
 		switch ( $args['type'] ) {
 			case 'array' :
 				return $page_links;
@@ -206,14 +195,8 @@ class NoOffsetPagination {
 	}
 
 	public static function pagination() {
-		global $wp_query, $wp_rewrite;
+		global $wp_rewrite;
 
-		// Don't print empty markup if there's only one page.
-		if ( $wp_query->max_num_pages < 2 ) {
-			return;
-		}
-
-		$paged        = get_query_var( 'paged' ) ? intval( get_query_var( 'paged' ) ) : 1;
 		$pagenum_link = html_entity_decode( get_pagenum_link() );
 		$query_args   = array();
 		$url_parts    = explode( '?', $pagenum_link );
@@ -223,17 +206,15 @@ class NoOffsetPagination {
 		}
 
 		$pagenum_link = remove_query_arg( array_keys( $query_args ), $pagenum_link );
-		$pagenum_link = trailingslashit( $pagenum_link ) . '%_%';
+		$pagenum_link = trailingslashit( $pagenum_link );
 
 		$format = $wp_rewrite->using_index_permalinks() && ! strpos( $pagenum_link, 'index.php' ) ? 'index.php/' : '';
-		$format .= $wp_rewrite->using_permalinks() ? user_trailingslashit( $wp_rewrite->pagination_base . '/%#%', 'paged' ) : '?paged=%#%';
+		$format .= $wp_rewrite->using_permalinks() ? user_trailingslashit( $wp_rewrite->pagination_base, 'paged' ) : '?paged=%#%';
 
 		// Set up paginated links.
 		$links = self::paginate_links( array(
-			'base'     => $pagenum_link,
-			'format'   => $format,
-			'total'    => $wp_query->max_num_pages,
-			'current'  => $paged
+			'base'   => $pagenum_link,
+			'format' => $format
 		) );
 
 		if ( $links ) :
