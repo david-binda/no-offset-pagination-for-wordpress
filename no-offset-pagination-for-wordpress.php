@@ -61,12 +61,18 @@ class NoOffsetPagination {
 		return null;
 	}
 
+	private function get_order( $query ) {
+		return ( true === isset( $query->query_vars['order'] ) && false === empty( $query->query_vars['order'] ) ) ? $query->query_vars['order'] : 'DESC';
+	}
+
 	public function where( $where, $query ) {
 		if ( true === $this->applies( $query ) ) {
 			global $wpdb;
 			$post = get_post( $this->get_post_id( $query ) );
 			if ( false === empty( $post ) ) {
-				$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) < ( %s, %d )", $post->post_date, $post->ID );
+				$order = $this->get_order( $query );
+				$operator = ( 'DESC' !== $order ) ? '>' : '<';
+				$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) {$operator} ( %s, %d )", $post->post_date, $post->ID );
 			}
 		}
 
@@ -85,7 +91,9 @@ class NoOffsetPagination {
 	public function orderby( $orderby, $query ) {
 		if ( true === $this->applies( $query ) ) {
 			global $wpdb;
-			$orderby .= " , {$wpdb->posts}.ID DESC";
+			$order = $this->get_order( $query );
+			$orderby_param = ( true === isset( $query->query_vars['orderby'] ) && false === empty( $query->query_vars['orderby'] ) ) ? $query->query_vars['orderby'] : 'post_date';
+			$orderby = "{$wpdb->posts}.{$orderby_param} {$order}, {$wpdb->posts}.ID {$order}";
 		}
 
 		return $orderby;
@@ -94,7 +102,8 @@ class NoOffsetPagination {
 	public function posts_request( $request, $query ) {
 		if ( true === $this->applies( $query, 'prev' ) ) {
 			global $wpdb;
-			$request = "SELECT * FROM (" . $request . ") ORDER BY {$wpdb->posts}.post_date DESC";
+			$order = $this->get_order( $query );
+			$request = "SELECT * FROM (" . $request . ") ORDER BY {$wpdb->posts}.post_date {$order}";
 		}
 
 		return $request;
