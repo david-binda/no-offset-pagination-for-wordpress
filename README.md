@@ -37,3 +37,7 @@ foreach ( $posts as $post ) {
   ...
 }
 ```
+
+## SQL Queries produced by the plugin
+
+If you are interested how does the produces SQL queries look like, visit the [wiki](https://github.com/david-binda/no-offset-pagination-for-wordpress/wiki/SQL-Queries)
