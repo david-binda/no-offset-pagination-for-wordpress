@@ -34,14 +34,20 @@ class NoOffsetPagination {
 		add_action( 'pre_get_posts', array( $this, 'pre_get_posts' ), 10, 2 );
 	}
 
-	private function applies( $query, $direction = 'next' ) {
+	private function applies( $query, $direction = 'both' ) {
 		$applies = false;
 		if ( false === is_admin() ) {
-			if ( true === $query->is_main_query() && true === isset( $_GET[ $direction ] ) ) {
-				$applies = true;
+			if ( true === $query->is_main_query() && ( true === isset( $_GET[ 'next' ] ) || true === isset( $_GET['prev'] ) ) ) {
+				if ( 'both' === $direction ) {
+					$applies = true;
+				} else if ( true === isset( $_GET[ $direction ] ) ) {
+					$applies = true;
+				}
 			} else {
 				if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
-					if ( true === isset( $query->query_vars['nooffset'][ $direction ] ) ) {
+					if ( 'both' === $direction ) {
+						$applies = true;
+					} else if ( true === isset( $query->query_vars['nooffset'][ $direction ] ) ) {
 						$applies = true;
 					}
 				}
@@ -51,18 +57,50 @@ class NoOffsetPagination {
 		return $applies;
 	}
 
-	private function get_post_id( $query = null ) {
-		if ( true === isset( $_GET['next'] ) ) {
-			return intval( $_GET['next'] );
-		} else if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
-			return $query->query_vars['nooffset']['next'];
+	private function get_direction( $query ) {
+		$direction = 'next';
+		if ( true === $query->is_main_query() && true === isset( $_GET['prev'] ) ) {
+			$direction = 'prev';
+		} else {
+			if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
+				if ( true === isset( $query->query_vars['nooffset'][ 'prev' ] ) ) {
+					$direction = 'prev';
+				}
+			}
 		}
+		return $direction;
+	}
 
+	private function get_post_id( $query = null ) {
+		$direction = $this->get_direction( $query );
+		if ( true === isset( $_GET[ $direction ] ) ) {
+			return intval( $_GET[ $direction ] );
+		} else if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
+			return $query->query_vars['nooffset'][ $direction ];
+		}
 		return null;
 	}
 
+	private function reverse_order( $order ) {
+		if ('DESC' === $order ) {
+			$order = 'ASC';
+		} else {
+			$order = 'DESC';
+		}
+		return $order;
+	}
+
 	private function get_order( $query ) {
-		return ( true === isset( $query->query_vars['order'] ) && false === empty( $query->query_vars['order'] ) ) ? $query->query_vars['order'] : 'DESC';
+		$direction = $this->get_direction( $query );
+		if ( true === isset( $query->query_vars['order'] ) && false === empty( $query->query_vars['order'] ) ) {
+			$order = $query->query_vars['order'];
+		} else{
+			$order = 'DESC';
+		}
+		if ( 'prev' === $direction ) {
+			$order = $this->reverse_order( $order );
+		}
+		return $order;
 	}
 
 	public function where( $where, $query ) {
@@ -88,11 +126,15 @@ class NoOffsetPagination {
 		return $limit;
 	}
 
+	private function get_orderby_param( $query ) {
+		return ( true === isset( $query->query_vars['orderby'] ) && false === empty( $query->query_vars['orderby'] ) ) ? $query->query_vars['orderby'] : 'post_date';
+	}
+
 	public function orderby( $orderby, $query ) {
 		if ( true === $this->applies( $query ) ) {
 			global $wpdb;
 			$order = $this->get_order( $query );
-			$orderby_param = ( true === isset( $query->query_vars['orderby'] ) && false === empty( $query->query_vars['orderby'] ) ) ? $query->query_vars['orderby'] : 'post_date';
+			$orderby_param = $this->get_orderby_param( $query );
 			$orderby = "{$wpdb->posts}.{$orderby_param} {$order}, {$wpdb->posts}.ID {$order}";
 		}
 
@@ -101,9 +143,9 @@ class NoOffsetPagination {
 
 	public function posts_request( $request, $query ) {
 		if ( true === $this->applies( $query, 'prev' ) ) {
-			global $wpdb;
+			$orderby_param = $this->get_orderby_param( $query );
 			$order = $this->get_order( $query );
-			$request = "SELECT * FROM (" . $request . ") ORDER BY {$wpdb->posts}.post_date {$order}";
+			$request = "SELECT * FROM (" . $request . ") as results ORDER BY results.{$orderby_param} {$order}, results.ID {$order}";
 		}
 
 		return $request;
@@ -115,17 +157,28 @@ class NoOffsetPagination {
 		}
 	}
 
+	private static function get_last_post_id() {
+		global $wp_query;
+		$posts        = $wp_query->posts;
+		$last_post    = array_pop( $posts );
+		$last_post_id = ( null !== $last_post ) ? $last_post->ID : false;
+		return $last_post_id;
+	}
+
+	private static function get_first_post_id() {
+		global $wp_query;
+		$posts = $wp_query->posts;
+		$first_post = array_shift( $posts );
+		$first_post_id = ( null !== $first_post ) ? $first_post->ID : false;
+		return $first_post_id;
+	}
+
 	private static function paginate_links( $args = '' ) {
-		global $wp_query, $wp_rewrite;
+		global $wp_rewrite;
 
 		$pagenum_link = html_entity_decode( get_pagenum_link() );
 		$query_args   = array();
 		$url_parts    = explode( '?', $pagenum_link );
-		$posts        = $wp_query->posts;
-		$last_post    = array_pop( $posts );
-		$last_post_id = ( null !== $last_post ) ? $last_post->ID : false;
-		unset( $last_post );
-		unset( $posts );
 
 		if ( isset( $url_parts[1] ) ) {
 			wp_parse_str( $url_parts[1], $query_args );
@@ -157,8 +210,10 @@ class NoOffsetPagination {
 		$r          = '';
 		$page_links = array();
 
-		if ( true === isset( $_GET['next'] ) && false === empty( $_GET['next'] ) ) {
+		if ( ( true === isset( $_GET['next'] ) && false === empty( $_GET['next'] ) ) || ( true === isset( $_GET['prev'] ) && false === empty( $_GET['prev'] ) ) ) {
 			$link = $args['base'];
+			$first_post_id = self::get_first_post_id();
+			$link = add_query_arg( array( 'prev' => $first_post_id ), $link );
 			if ( $add_args ) {
 				$link = add_query_arg( $add_args, $link );
 			}
@@ -175,6 +230,7 @@ class NoOffsetPagination {
 		}
 
 		$link = $args['base'];
+		$last_post_id = self::get_last_post_id();
 		$link = add_query_arg( array( 'next' => $last_post_id ), $link );
 		if ( $add_args ) {
 			$link = add_query_arg( $add_args, $link );
