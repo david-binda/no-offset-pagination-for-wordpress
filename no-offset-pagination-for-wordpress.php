@@ -3,7 +3,7 @@
  * Plugin Name: No Offset Pagination for WordPress
  * Plugin URI: https://github.com/david-binda/no-offset-pagination-for-wordpress
  * Description: Introduces No Offset (keyset) pagination approach to WordPress
- * Version: 0.1
+ * Version: 1.0
  * Author: David Biňovec
  * Author URI: http://david.binda.cz
  * License: GPL2
@@ -37,7 +37,7 @@ class NoOffsetPagination {
 	private static function applies( $query, $direction = 'both' ) {
 		$applies = false;
 		if ( false === is_admin() ) {
-			if ( true === $query->is_main_query() && ( true === isset( $_GET[ 'next' ] ) || true === isset( $_GET['prev'] ) ) ) {
+			if ( true === $query->is_main_query() && ( true === isset( $_GET['next'] ) || true === isset( $_GET['prev'] ) ) ) {
 				if ( 'both' === $direction ) {
 					$applies = true;
 				} else if ( true === isset( $_GET[ $direction ] ) ) {
@@ -63,11 +63,12 @@ class NoOffsetPagination {
 			$direction = 'prev';
 		} else {
 			if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
-				if ( true === isset( $query->query_vars['nooffset'][ 'prev' ] ) ) {
+				if ( true === isset( $query->query_vars['nooffset']['prev'] ) ) {
 					$direction = 'prev';
 				}
 			}
 		}
+
 		return $direction;
 	}
 
@@ -75,31 +76,34 @@ class NoOffsetPagination {
 		$direction = self::get_direction( $query );
 		if ( true === isset( $_GET[ $direction ] ) ) {
 			return intval( $_GET[ $direction ] );
-		} else if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
+		} else if ( false === empty( $query ) && true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
 			return $query->query_vars['nooffset'][ $direction ];
 		}
+
 		return null;
 	}
 
 	private static function reverse_order( $order ) {
-		if ('DESC' === $order ) {
+		if ( 'DESC' === $order ) {
 			$order = 'ASC';
 		} else {
 			$order = 'DESC';
 		}
+
 		return $order;
 	}
 
-	private static function get_order( $query, $direction = null ) {
+	private static function get_order( $query ) {
 		$direction = self::get_direction( $query );
 		if ( true === isset( $query->query_vars['order'] ) && false === empty( $query->query_vars['order'] ) ) {
 			$order = $query->query_vars['order'];
-		} else{
+		} else {
 			$order = 'DESC';
 		}
 		if ( 'prev' === $direction ) {
 			$order = self::reverse_order( $order );
 		}
+
 		return $order;
 	}
 
@@ -108,7 +112,7 @@ class NoOffsetPagination {
 			global $wpdb;
 			$post = get_post( self::get_post_id( $query ) );
 			if ( false === empty( $post ) ) {
-				$order = self::get_order( $query );
+				$order    = self::get_order( $query );
 				$operator = ( 'DESC' !== $order ) ? '>' : '<';
 				$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) {$operator} ( %s, %d )", $post->post_date, $post->ID );
 			}
@@ -133,9 +137,9 @@ class NoOffsetPagination {
 	public function orderby( $orderby, $query ) {
 		if ( true === self::applies( $query ) ) {
 			global $wpdb;
-			$order = self::get_order( $query );
+			$order         = self::get_order( $query );
 			$orderby_param = self::get_orderby_param( $query );
-			$orderby = "{$wpdb->posts}.{$orderby_param} {$order}, {$wpdb->posts}.ID {$order}";
+			$orderby       = "{$wpdb->posts}.{$orderby_param} {$order}, {$wpdb->posts}.ID {$order}";
 		}
 
 		return $orderby;
@@ -144,9 +148,9 @@ class NoOffsetPagination {
 	public function posts_request( $request, $query ) {
 		if ( true === self::applies( $query, 'prev' ) ) {
 			$orderby_param = self::get_orderby_param( $query );
-			$order = self::get_order( $query, 'prev' );
-			$order = self::reverse_order( $order );
-			$request = "SELECT * FROM (" . $request . ") as results ORDER BY results.{$orderby_param} {$order}, results.ID {$order}";
+			$order         = self::get_order( $query, 'prev' );
+			$order         = self::reverse_order( $order );
+			$request       = "SELECT * FROM (" . $request . ") as results ORDER BY results.{$orderby_param} {$order}, results.ID {$order}";
 		}
 
 		return $request;
@@ -163,14 +167,16 @@ class NoOffsetPagination {
 		$posts        = $wp_query->posts;
 		$last_post    = array_pop( $posts );
 		$last_post_id = ( null !== $last_post ) ? $last_post->ID : false;
+
 		return $last_post_id;
 	}
 
 	private static function get_first_post_id() {
 		global $wp_query;
-		$posts = $wp_query->posts;
-		$first_post = array_shift( $posts );
+		$posts         = $wp_query->posts;
+		$first_post    = array_shift( $posts );
 		$first_post_id = ( null !== $first_post ) ? $first_post->ID : false;
+
 		return $first_post_id;
 	}
 
@@ -212,9 +218,9 @@ class NoOffsetPagination {
 		$page_links = array();
 
 		if ( ( true === isset( $_GET['next'] ) && false === empty( $_GET['next'] ) ) || ( true === isset( $_GET['prev'] ) && false === empty( $_GET['prev'] ) ) ) {
-			$link = $args['base'];
+			$link          = $args['base'];
 			$first_post_id = self::get_first_post_id();
-			$link = add_query_arg( array( 'prev' => $first_post_id ), $link );
+			$link          = add_query_arg( array( 'prev' => $first_post_id ), $link );
 			if ( $add_args ) {
 				$link = add_query_arg( $add_args, $link );
 			}
@@ -230,9 +236,9 @@ class NoOffsetPagination {
 			$page_links[] = '<a class="prev page-numbers" href="' . esc_url( apply_filters( 'paginate_links', $link ) ) . '">' . $args['prev_text'] . '</a>';
 		}
 
-		$link = $args['base'];
+		$link         = $args['base'];
 		$last_post_id = self::get_last_post_id();
-		$link = add_query_arg( array( 'next' => $last_post_id ), $link );
+		$link         = add_query_arg( array( 'next' => $last_post_id ), $link );
 		if ( $add_args ) {
 			$link = add_query_arg( $add_args, $link );
 		}
