@@ -44,7 +44,8 @@ For listing previous posts, you have to get the most recent posts's ID ( the one
 $args = array(
   ...
   'nooffset' => array( 'prev' => $most_recent_displayed_post_id ),
-)
+  ...
+);
 ...
 ```
 
