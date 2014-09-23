@@ -34,7 +34,7 @@ class NoOffsetPagination {
 		add_action( 'pre_get_posts', array( $this, 'pre_get_posts' ), 10, 2 );
 	}
 
-	private function applies( $query, $direction = 'both' ) {
+	private static function applies( $query, $direction = 'both' ) {
 		$applies = false;
 		if ( false === is_admin() ) {
 			if ( true === $query->is_main_query() && ( true === isset( $_GET[ 'next' ] ) || true === isset( $_GET['prev'] ) ) ) {
@@ -57,7 +57,7 @@ class NoOffsetPagination {
 		return $applies;
 	}
 
-	private function get_direction( $query ) {
+	private static function get_direction( $query ) {
 		$direction = 'next';
 		if ( true === $query->is_main_query() && true === isset( $_GET['prev'] ) ) {
 			$direction = 'prev';
@@ -71,8 +71,8 @@ class NoOffsetPagination {
 		return $direction;
 	}
 
-	private function get_post_id( $query = null ) {
-		$direction = $this->get_direction( $query );
+	private static function get_post_id( $query = null ) {
+		$direction = self::get_direction( $query );
 		if ( true === isset( $_GET[ $direction ] ) ) {
 			return intval( $_GET[ $direction ] );
 		} else if ( true === isset( $query->query_vars['nooffset'] ) && false === empty( $query->query_vars['nooffset'] ) ) {
@@ -81,7 +81,7 @@ class NoOffsetPagination {
 		return null;
 	}
 
-	private function reverse_order( $order ) {
+	private static function reverse_order( $order ) {
 		if ('DESC' === $order ) {
 			$order = 'ASC';
 		} else {
@@ -90,25 +90,25 @@ class NoOffsetPagination {
 		return $order;
 	}
 
-	private function get_order( $query, $direction = null ) {
-		$direction = $this->get_direction( $query );
+	private static function get_order( $query, $direction = null ) {
+		$direction = self::get_direction( $query );
 		if ( true === isset( $query->query_vars['order'] ) && false === empty( $query->query_vars['order'] ) ) {
 			$order = $query->query_vars['order'];
 		} else{
 			$order = 'DESC';
 		}
 		if ( 'prev' === $direction ) {
-			$order = $this->reverse_order( $order );
+			$order = self::reverse_order( $order );
 		}
 		return $order;
 	}
 
 	public function where( $where, $query ) {
-		if ( true === $this->applies( $query ) ) {
+		if ( true === self::applies( $query ) ) {
 			global $wpdb;
-			$post = get_post( $this->get_post_id( $query ) );
+			$post = get_post( self::get_post_id( $query ) );
 			if ( false === empty( $post ) ) {
-				$order = $this->get_order( $query );
+				$order = self::get_order( $query );
 				$operator = ( 'DESC' !== $order ) ? '>' : '<';
 				$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) {$operator} ( %s, %d )", $post->post_date, $post->ID );
 			}
@@ -118,7 +118,7 @@ class NoOffsetPagination {
 	}
 
 	public function limit( $limit, $query ) {
-		if ( true === $this->applies( $query ) ) {
+		if ( true === self::applies( $query ) ) {
 			global $wpdb;
 			$limit = $wpdb->prepare( "LIMIT %d", $query->query_vars['posts_per_page'] );
 		}
@@ -126,15 +126,15 @@ class NoOffsetPagination {
 		return $limit;
 	}
 
-	private function get_orderby_param( $query ) {
+	private static function get_orderby_param( $query ) {
 		return ( true === isset( $query->query_vars['orderby'] ) && false === empty( $query->query_vars['orderby'] ) ) ? $query->query_vars['orderby'] : 'post_date';
 	}
 
 	public function orderby( $orderby, $query ) {
-		if ( true === $this->applies( $query ) ) {
+		if ( true === self::applies( $query ) ) {
 			global $wpdb;
-			$order = $this->get_order( $query );
-			$orderby_param = $this->get_orderby_param( $query );
+			$order = self::get_order( $query );
+			$orderby_param = self::get_orderby_param( $query );
 			$orderby = "{$wpdb->posts}.{$orderby_param} {$order}, {$wpdb->posts}.ID {$order}";
 		}
 
@@ -142,10 +142,10 @@ class NoOffsetPagination {
 	}
 
 	public function posts_request( $request, $query ) {
-		if ( true === $this->applies( $query, 'prev' ) ) {
-			$orderby_param = $this->get_orderby_param( $query );
-			$order = $this->get_order( $query, 'prev' );
-			$order = $this->reverse_order( $order );
+		if ( true === self::applies( $query, 'prev' ) ) {
+			$orderby_param = self::get_orderby_param( $query );
+			$order = self::get_order( $query, 'prev' );
+			$order = self::reverse_order( $order );
 			$request = "SELECT * FROM (" . $request . ") as results ORDER BY results.{$orderby_param} {$order}, results.ID {$order}";
 		}
 
@@ -153,7 +153,7 @@ class NoOffsetPagination {
 	}
 
 	public function pre_get_posts( $query ) {
-		if ( true === $this->applies( $query ) ) {
+		if ( true === self::applies( $query ) ) {
 			$query->set( 'no_found_rows', true );
 		}
 	}
