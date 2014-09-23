@@ -114,7 +114,8 @@ class NoOffsetPagination {
 			if ( false === empty( $post ) ) {
 				$order    = self::get_order( $query );
 				$operator = ( 'DESC' !== $order ) ? '>' : '<';
-				$where .= $wpdb->prepare( " AND ( {$wpdb->posts}.post_date, {$wpdb->posts}.ID ) {$operator} ( %s, %d )", $post->post_date, $post->ID );
+				$negative_operator = ( '>' === $operator ) ? '<' : '>';
+				$where .= $wpdb->prepare( " AND {$wpdb->posts}.post_date {$operator}= %s AND NOT( {$wpdb->posts}.post_date = %s AND {$wpdb->posts}.ID {$negative_operator}= %d )", $post->post_date, $post->post_date, $post->ID );
 			}
 		}
 
