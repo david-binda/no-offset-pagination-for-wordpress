@@ -90,7 +90,7 @@ class NoOffsetPagination {
 		return $order;
 	}
 
-	private function get_order( $query ) {
+	private function get_order( $query, $direction = null ) {
 		$direction = $this->get_direction( $query );
 		if ( true === isset( $query->query_vars['order'] ) && false === empty( $query->query_vars['order'] ) ) {
 			$order = $query->query_vars['order'];
@@ -144,7 +144,8 @@ class NoOffsetPagination {
 	public function posts_request( $request, $query ) {
 		if ( true === $this->applies( $query, 'prev' ) ) {
 			$orderby_param = $this->get_orderby_param( $query );
-			$order = $this->get_order( $query );
+			$order = $this->get_order( $query, 'prev' );
+			$order = $this->reverse_order( $order );
 			$request = "SELECT * FROM (" . $request . ") as results ORDER BY results.{$orderby_param} {$order}, results.ID {$order}";
 		}
 
