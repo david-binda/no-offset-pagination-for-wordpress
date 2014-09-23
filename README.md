@@ -38,7 +38,7 @@ foreach ( $posts as $post ) {
 }
 ```
 
-For listing previous posts, you have to get the most recent posts's ID ( the one displayed as first on your page ) and refer it from ``nooffset`` array this way:
+For listing previous posts, you have to get the most recent post's ID ( the one displayed as first on your page ) and refer it from ``nooffset`` array this way:
 
 ```php
 $args = array(
